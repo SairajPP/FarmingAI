@@ -1,0 +1,503 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Krishi AI Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f0f4f8;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 250px;
+      height: 100vh;
+      background: linear-gradient(to bottom right, #22c55e, #15803d);
+      color: white;
+      padding: 30px 20px;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .sidebar h4 {
+      font-size: 1.5rem;
+      margin-bottom: 30px;
+      font-weight: bold;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 15px 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .main-content {
+      margin-left: 270px;
+      padding: 40px 30px;
+    }
+
+    .main-content h2 {
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1e293b;
+    }
+
+    .crop-card {
+      background-color: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+      transition: transform 0.2s;
+    }
+
+    .crop-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .crop-card h5 {
+      margin-bottom: 8px;
+      color: #111827;
+    }
+
+    .crop-card p {
+      margin: 0;
+      color: #475569;
+    }
+
+    .status-pill {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: white;
+    }
+
+    .status-growing {
+      background-color: #34d399;
+    }
+
+    .status-harvested {
+      background-color: #fbbf24;
+    }
+
+    .suggestion-box {
+      margin-top: 12px;
+      background: #f9f9f9;
+      padding: 10px;
+      border-left: 4px solid #22c55e;
+      font-size: 0.9rem;
+      color: #334155;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+      .main-content {
+        margin: 0;
+        padding: 20px;
+      }
+    }
+     #chat-window div.user {
+    background-color: #d1fae5;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    text-align: right;
+    max-width: 80%;
+    margin-left: auto;
+    word-wrap: break-word;
+  }
+
+  #chat-window div.bot {
+    background-color: #e0f2fe;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    text-align: left;
+    max-width: 80%;
+    margin-right: auto;
+    word-wrap: break-word;
+  }
+  </style>
+</head>
+<body>
+<div class="sidebar">
+  <h4><i class="bi bi-flower2"></i> Krishi AI</h4>
+  <a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+  <a href="{% url 'dashboard' %}?action=add"><i class="bi bi-plus-circle me-2"></i> Add New Crop</a>
+  <a href="{% url 'dashboard' %}?action=status"><i class="bi bi-droplet-half me-2"></i> Status</a>
+<a href="{% url 'dashboard' %}?action=weather"><i class="bi bi-cloud-sun me-2"></i> Weather</a>
+<a href="{% url 'dashboard' %}?action=upload"><i class="bi bi-upload me-2"></i> Upload Crop Image</a>
+  <a href="{% url 'dashboard' %}?action=chatbot"><i class="bi bi-chat-dots me-2"></i> Chatbot Advisor</a>
+<a href="{% url 'dashboard' %}?action=profile"><i class="bi bi-person me-2"></i> Profile</a>
+  <form method="POST" action="{% url 'logout' %}" style="margin: 0;">
+  {% csrf_token %}
+  <button type="submit" class="sidebar-link btn btn-link text-start w-100 d-flex align-items-center text-danger" style="text-decoration: none;">
+    <i class="bi bi-box-arrow-right me-2"></i> Logout
+  </button>
+</form>
+
+
+
+</div>
+<!-- 🎤 Floating Mic Button -->
+<button id="mic-btn" class="btn btn-success rounded-circle shadow" style="
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+  z-index: 999;
+">
+  <i class="bi bi-mic-fill"></i>
+</button>
+
+<div class="main-content">
+  <h2>Welcome, {{ request.user.first_name|default:request.user.username }} 👋</h2>
+
+  {% if show_form %}
+    <h4 class="mb-3">➕ Add New Crop</h4>
+    {% if messages %}
+      {% for message in messages %}<div class="alert alert-success mt-2">{{ message }}</div>{% endfor %}
+    {% endif %}
+    <form method="POST" class="row g-3 mt-2">
+      {% csrf_token %}
+      <div class="col-md-4">
+        <input type="text" name="name" class="form-control" placeholder="Crop Name" required>
+      </div>
+      <div class="col-md-4">
+        <input type="date" name="date" class="form-control" required>
+      </div>
+      <div class="col-md-3">
+        <select name="status" class="form-select" required>
+          <option value="">Select Status</option>
+          <option value="Growing">Growing</option>
+          <option value="Harvested">Harvested</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <input type="number" step="0.01" name="land_area" class="form-control" placeholder="Land Area (acres)" required>
+      </div>
+      <div class="col-md-1 d-grid">
+        <button type="submit" class="btn btn-success">Add</button>
+      </div>
+    </form>
+    <hr class="my-4">
+    <h4>🌿 Active Growing Crops</h4>
+    <div class="row g-4">
+      {% for item in dashboard_data %}
+        <div class="col-md-6">
+          <div class="crop-card">
+            <h5>{{ item.crop.name }}</h5>
+            <p>Planted on: {{ item.crop.date_planted }}</p>
+            <span class="status-pill status-growing">{{ item.crop.status }}</span>
+            <div class="suggestion-box">
+              <strong>Week {{ item.weeks }}</strong>
+              <ul class="mb-0">
+                {% for tip in item.suggestions %}<li>{{ tip }}</li>{% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+      {% empty %}<p class="text-muted">No growing crops yet. Add some above.</p>{% endfor %}
+    </div>
+   {% elif show_weather %}
+<h4 class="mt-4 mb-3">🌦️ Live Weather Information</h4>
+
+<!-- 📍 Auto-location -->
+<div id="location-loader" class="text-muted mb-3">
+  <i class="bi bi-geo"></i> Detecting your location...
+</div>
+
+<script>
+  // 🔄 Auto-locate and redirect with city name
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async function(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      // Reverse Geocoding to get city from lat/lon using OpenStreetMap (Nominatim)
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+        const data = await res.json();
+        const city = data.address.city || data.address.town || data.address.village || "Delhi";
+
+        // Redirect to weather page with city
+        window.location.href = `/dashboard?action=weather&city=${encodeURIComponent(city)}`;
+      } catch (e) {
+        document.getElementById("location-loader").innerText = "⚠️ Failed to detect location.";
+      }
+    }, function(error) {
+      document.getElementById("location-loader").innerText = "⚠️ Location access denied.";
+    });
+  } else {
+    document.getElementById("location-loader").innerText = "⚠️ Geolocation not supported.";
+  }
+</script>
+
+{% if weather_data %}
+  <div class="card p-3 mb-4 shadow-sm" style="max-width: 400px;">
+    <h5 class="mb-2"><i class="bi bi-geo-alt"></i> {{ weather_data.city }}</h5>
+    <p><strong>🌡️ Temperature:</strong> {{ weather_data.temperature }} °C</p>
+    <p><strong>☁️ Condition:</strong> {{ weather_data.description|title }}</p>
+    <p><strong>💧 Humidity:</strong> {{ weather_data.humidity }}%</p>
+    <p><strong>🌬️ Wind Speed:</strong> {{ weather_data.wind_speed }} m/s</p>
+  </div>
+{% else %}
+  <p class="text-danger">⚠️ Weather data is currently unavailable. Please try again later.</p>
+{% endif %}
+
+
+  {% elif show_status %}
+  <h4 class="mb-3">📊 Crop Status & AI Suggestions</h4>
+
+  <div class="row g-4">
+    {% for item in dashboard_data %}
+      <div class="col-md-6">
+        <div class="crop-card">
+          <h5>{{ item.crop.name }}</h5>
+          <p>Planted on: {{ item.crop.date_planted }}</p>
+          <p>Land Area: {{ item.crop.land_area }} acres</p>
+          <span class="status-pill 
+            {% if item.crop.status == 'Growing' %}status-growing
+            {% elif item.crop.status == 'Harvested' %}status-harvested{% endif %}">
+            {{ item.crop.status }}
+          </span>
+
+          <div class="suggestion-box mt-2">
+            <strong>Week {{ item.weeks }}</strong>
+            <ul class="mb-0">
+              {% for tip in item.suggestions %}
+                <li>{{ tip }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-muted">No crops available to show status. Add one from the sidebar.</p>
+    {% endfor %}
+  </div>
+{% elif show_chatbot %}
+<h4 class="mb-3 text-center">🤖 Chatbot Advisor</h4>
+
+<div class="d-flex justify-content-center">
+  <div class="card shadow-sm p-3" style="width: 100%; max-width: 600px;">
+    <div id="chat-window" style="height: 320px; overflow-y: auto; padding: 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 5px;">
+      <div class="text-muted mb-2">Chat with Krishi AI Assistant 🌱</div>
+    </div>
+    <form id="chat-form" class="d-flex mt-3">
+      <input type="text" id="chat-input" class="form-control me-2" placeholder="Type your message..." required style="flex: 1;"/>
+      <button class="btn btn-success" type="submit"><i class="bi bi-send"></i></button>
+    </form>
+  </div>
+</div>
+{% elif action == 'upload' %}
+
+<h4 class="mb-3">📷 Upload Crop Image for AI Analysis</h4>
+
+<form method="POST" enctype="multipart/form-data" action="{% url 'upload_crop_image' %}" class="mb-4">
+  {% csrf_token %}
+  <input type="file" name="crop_image" accept="image/*" class="form-control mb-3" required>
+
+  <select name="crop_id" class="form-select mb-3" required>
+    <option value="">Select Crop</option>
+    {% for crop in crops %}
+      <option value="{{ crop.id }}">{{ crop.name }} (Planted: {{ crop.date_planted }})</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit" class="btn btn-success">Analyze Image</button>
+</form>
+
+
+{% if suggestions %}
+  <div class="card p-3 shadow-sm">
+    <img src="{{ image_url }}" class="img-fluid rounded mb-3" style="max-width: 300px;">
+    <h5>🌿 AI Suggestions:</h5>
+    <pre>{{ suggestions }}</pre>
+  </div>
+{% endif %}
+{% elif request.GET.action == 'profile' %}
+<h4 class="mb-3">👤 Profile Details</h4>
+
+<form method="POST" action="{% url 'update_profile' %}">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label>Name</label>
+    <input type="text" name="name" class="form-control" value="{{ request.user.first_name }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label>Age</label>
+    <input type="number" name="age" class="form-control" value="{{ profile.age }}">
+  </div>
+
+  <div class="mb-3">
+    <label>Profile Photo URL</label>
+    <input type="url" name="photo" class="form-control" value="{{ profile.profile_photo }}">
+  </div>
+
+  <button type="submit" class="btn btn-success">Update Profile</button>
+</form>
+
+  {% else %}
+    <div class="row">
+      <div class="col-lg-8">
+        <h4>Your Crops</h4>
+        <div class="row g-4">
+          {% for crop in crops %}
+            <div class="col-md-6">
+              <div class="crop-card">
+                <h5>{{ crop.name }}</h5>
+                <p>Planted on: {{ crop.date_planted }}</p>
+                <span class="status-pill {% if crop.status == 'Growing' %}status-growing{% elif crop.status == 'Harvested' %}status-harvested{% endif %}">{{ crop.status }}</span>
+              </div>
+            </div>
+          {% empty %}<p>No crops yet. <a href="{% url 'dashboard' %}?action=add">Add your first crop</a>.</p>{% endfor %}
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card p-3 shadow-sm">
+          <div class="text-center">
+            <img src="{{ profile.profile_photo|default:'https://via.placeholder.com/100' }}" class="rounded-circle mb-2" width="100" height="100" alt="Profile">
+            <h5 class="mb-0">{{ request.user.first_name }}</h5>
+            <small>{{ request.user.email }}</small><br>
+            <span class="text-muted">Age: {{ profile.age|default:"Not set" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+<script>
+  const micBtn = document.getElementById("mic-btn");
+
+  micBtn.addEventListener("click", () => {
+    if (!('webkitSpeechRecognition' in window)) {
+      alert("Speech recognition not supported. Use Chrome or Edge.");
+      return;
+    }
+
+    const recognition = new webkitSpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.start();
+
+    recognition.onresult = (event) => {
+      const command = event.results[0][0].transcript.toLowerCase();
+      console.log("🎤 You said:", command);
+
+      if (command.includes("add")) {
+        window.location.href = "?action=add";
+      } else if (command.includes("status")) {
+        window.location.href = "?action=status";
+      } else if (command.includes("weather")) {
+        window.location.href = "?action=weather";
+      } else if (command.includes("logout")) {
+        window.location.href = "{% url 'logout' %}";
+      } else {
+        alert("Command not recognized. Try saying: 'add crop', 'weather', 'status', or 'logout'");
+      }
+    };
+
+    recognition.onerror = (e) => {
+      console.error("Speech recognition error:", e.error);
+    };
+  });
+</script>
+
+<script>
+  const form = document.getElementById("chat-form");
+  const input = document.getElementById("chat-input");
+  const chatWindow = document.getElementById("chat-window");
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const userText = input.value.trim();
+    if (!userText) return;
+
+    // Add user message to window
+    chatWindow.innerHTML += `<div class="user">${userText}</div>`;
+    input.value = "";
+
+    // Send to backend
+    const response = await fetch("{% url 'chatbot_reply' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ message: userText }),
+    });
+
+    const data = await response.json();
+    chatWindow.innerHTML += `<div class="bot">${data.reply}</div>`;
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  });
+</script>
+
+<script>
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async function(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      console.log("📍 Latitude:", lat, "Longitude:", lon);
+
+      try {
+        // ✅ Use Nominatim reverse geocoding with required headers
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
+          headers: {
+            'User-Agent': 'KrishiAI/1.0 (your_email@example.com)'  // Nominatim requires this
+          }
+        });
+
+        const data = await res.json();
+        console.log("🌍 Reverse geocode result:", data);
+
+        // Try multiple keys in order of priority
+        const address = data.address;
+        const city = address.city || address.town || address.village || address.state_district || address.state || "Delhi";
+
+        // Final redirect
+        window.location.href = `/dashboard?action=weather&city=${encodeURIComponent(city)}`;
+      } catch (e) {
+        console.error("❌ Geocoding error:", e);
+        document.getElementById("location-loader").innerText = "⚠️ Failed to detect location.";
+      }
+    }, function(error) {
+      console.error("❌ Location error:", error);
+      document.getElementById("location-loader").innerText = "⚠️ Location access denied.";
+    });
+  } else {
+    document.getElementById("location-loader").innerText = "⚠️ Geolocation not supported.";
+  }
+</script>
+
+
+
+
+</body>
+</html>
