@@ -129,7 +129,7 @@ def dashboard(request):
     weather_data = None
     if show_weather:
         city = request.GET.get('city') or "Delhi"
-        api_key = "92ab645a5721cc82693fa70ab1e3c768"
+        api_key = "YOUR_API_KEY"
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
 
         try:
@@ -188,7 +188,7 @@ def chatbot_reply(request):
         user_message = request.POST.get('message', '')
 
         try:
-            genai.configure(api_key="AIzaSyCPx7fUInSQN-OQDVuJ1DNUSsHOTZu47DE")
+            genai.configure(api_key="YOUR_API_KEY")
 
             # ✅ Use a supported model from your list
             model = genai.GenerativeModel(model_name="models/gemini-1.5-pro-latest")
